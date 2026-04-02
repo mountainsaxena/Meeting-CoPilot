@@ -111,6 +111,9 @@ data class AIResponse(val summary: String, val actionItems: String)
 suspend fun fetchFromAI(transcript: String, provider: String, apiKey: String): AIResponse {
     if (apiKey.isBlank()) return AIResponse("Error: API Key not set", "Error: API Key not set")
     
+    // Safety check: Don't send empty transcript
+    if (transcript.trim().isBlank()) return AIResponse("Waiting for enough data...", "Waiting...")
+
     return if (provider == "OpenAI") {
         fetchFromOpenAI(transcript, apiKey)
     } else {
@@ -145,13 +148,19 @@ suspend fun fetchFromOpenAI(transcript: String, apiKey: String): AIResponse {
     return withContext(Dispatchers.IO) {
         try {
             client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string() ?: return@withContext AIResponse("Empty", "Empty")
+                val responseBody = response.body?.string() ?: return@withContext AIResponse("Empty response", "Empty response")
+                
+                if (!response.isSuccessful) {
+                    val errorMsg = if (response.code == 429) "Quota exceeded" else "Status ${response.code}"
+                    return@withContext AIResponse("API Error: $errorMsg", "Error")
+                }
+
                 val jsonResponse = JSONObject(responseBody)
                 val content = jsonResponse.getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
                 val parsed = JSONObject(content)
                 AIResponse(parsed.getString("summary"), parsed.getString("action_items"))
             }
-        } catch (e: Exception) { AIResponse("Error: ${e.message}", "Error: ${e.message}") }
+        } catch (e: Exception) { AIResponse("Parsing Error: ${e.message}", "Error") }
     }
 }
 
@@ -186,14 +195,27 @@ suspend fun fetchFromClaude(transcript: String, apiKey: String): AIResponse {
     return withContext(Dispatchers.IO) {
         try {
             client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string() ?: return@withContext AIResponse("Empty", "Empty")
+                val responseBody = response.body?.string() ?: return@withContext AIResponse("Empty response", "Empty response")
+                
+                if (!response.isSuccessful) {
+                    return@withContext AIResponse("Claude API Error: ${response.code}", "Error")
+                }
+
                 val jsonResponse = JSONObject(responseBody)
                 val content = jsonResponse.getJSONArray("content").getJSONObject(0).getString("text")
-                val cleanJson = content.trim().removePrefix("```json").removeSuffix("```").trim()
-                val parsed = JSONObject(cleanJson)
-                AIResponse(parsed.getString("summary"), parsed.getString("action_items"))
+                
+                // Robust extraction of JSON from Claude's response
+                val start = content.indexOf("{")
+                val end = content.lastIndexOf("}")
+                if (start != -1 && end != -1) {
+                    val jsonStr = content.substring(start, end + 1)
+                    val parsed = JSONObject(jsonStr)
+                    AIResponse(parsed.getString("summary"), parsed.getString("action_items"))
+                } else {
+                    AIResponse("Could not parse AI response", "Error")
+                }
             }
-        } catch (e: Exception) { AIResponse("Error: ${e.message}", "Error: ${e.message}") }
+        } catch (e: Exception) { AIResponse("Parsing Error: ${e.message}", "Error") }
     }
 }
 
@@ -240,7 +262,6 @@ fun MeetingScreen() {
     var actionItems by remember { mutableStateOf("No action items yet...") }
     var permissionGranted by remember { mutableStateOf(false) }
 
-    // Logic to keep screen on while on Meeting tab
     DisposableEffect(keepScreenOn) {
         if (keepScreenOn) {
             activity?.setKeepScreenOn(true)
