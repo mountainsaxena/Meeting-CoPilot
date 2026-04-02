@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,6 +65,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -322,6 +324,11 @@ fun MeetingScreen() {
                         isRecording = true; speechRecognizer.startListening(recognizerIntent)
                     }
                 }
+            },
+            colors = if (isRecording) {
+                ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+            } else {
+                ButtonDefaults.buttonColors()
             },
             modifier = Modifier.fillMaxWidth()
         ) { Text(if (isRecording) "Stop & Save Meeting" else "Start Meeting") }
