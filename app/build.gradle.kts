@@ -60,6 +60,9 @@ dependencies {
     // DataStore for Settings
     implementation(libs.androidx.datastore.preferences)
 
+    // Gemini
+    implementation(libs.google.generativeai)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
