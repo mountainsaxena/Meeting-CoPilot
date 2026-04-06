@@ -17,7 +17,8 @@ class SettingsManager(private val context: Context) {
     companion object {
         val OPENAI_API_KEY = stringPreferencesKey("openai_api_key")
         val CLAUDE_API_KEY = stringPreferencesKey("claude_api_key")
-        val SELECTED_PROVIDER = stringPreferencesKey("selected_provider")
+        val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        val SELECTED_PROVIDER = stringPreferencesKey("selected_provider") // "OpenAI", "Claude", or "Gemini"
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val UPDATE_INTERVAL = intPreferencesKey("update_interval")
         val ADAPTIVE_INTERVAL = booleanPreferencesKey("adaptive_interval")
@@ -25,7 +26,11 @@ class SettingsManager(private val context: Context) {
 
     val openaiKeyFlow: Flow<String?> = context.dataStore.data.map { it[OPENAI_API_KEY] }
     val claudeKeyFlow: Flow<String?> = context.dataStore.data.map { it[CLAUDE_API_KEY] }
-    val selectedProviderFlow: Flow<String> = context.dataStore.data.map { it[SELECTED_PROVIDER] ?: "OpenAI" }
+    val geminiKeyFlow: Flow<String?> = context.dataStore.data.map { it[GEMINI_API_KEY] }
+    val selectedProviderFlow: Flow<String> = context.dataStore.data.map { 
+        val provider = it[SELECTED_PROVIDER] ?: "OpenAI"
+        if (provider == "OpenClaw") "OpenAI" else provider
+    }
     val keepScreenOnFlow: Flow<Boolean> = context.dataStore.data.map { it[KEEP_SCREEN_ON] ?: false }
     val updateIntervalFlow: Flow<Int> = context.dataStore.data.map { it[UPDATE_INTERVAL] ?: 60 }
     val adaptiveIntervalFlow: Flow<Boolean> = context.dataStore.data.map { it[ADAPTIVE_INTERVAL] ?: false }
@@ -36,6 +41,10 @@ class SettingsManager(private val context: Context) {
 
     suspend fun saveClaudeKey(key: String) {
         context.dataStore.edit { it[CLAUDE_API_KEY] = key }
+    }
+
+    suspend fun saveGeminiKey(key: String) {
+        context.dataStore.edit { it[GEMINI_API_KEY] = key }
     }
 
     suspend fun setProvider(provider: String) {
@@ -54,9 +63,13 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit { it[ADAPTIVE_INTERVAL] = enabled }
     }
 
-    suspend fun deleteApiKey(isOpenAI: Boolean) {
+    suspend fun deleteApiKey(provider: String) {
         context.dataStore.edit { 
-            if (isOpenAI) it.remove(OPENAI_API_KEY) else it.remove(CLAUDE_API_KEY)
+            when(provider) {
+                "OpenAI" -> it.remove(OPENAI_API_KEY)
+                "Claude" -> it.remove(CLAUDE_API_KEY)
+                "Gemini" -> it.remove(GEMINI_API_KEY)
+            }
         }
     }
 }

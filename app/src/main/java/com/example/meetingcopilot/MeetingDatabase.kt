@@ -23,7 +23,9 @@ data class MeetingSession(
     val latestDecision: String = "",
     val decisionConfidence: String = "",
     val decisionMissing: String = "",
-    val whatChanged: String = ""
+    val whatChanged: String = "",
+    val nudges: String = "",
+    val generatedQuestions: String = ""
 )
 
 @Dao
@@ -38,7 +40,7 @@ interface MeetingDao {
     suspend fun deleteMeeting(id: Int)
 }
 
-@Database(entities = [MeetingSession::class], version = 2) // ⚠️ Bumped to version 2
+@Database(entities = [MeetingSession::class], version = 4) // Bumped version to 4 for questions
 abstract class MeetingDatabase : RoomDatabase() {
     abstract fun meetingDao(): MeetingDao
 
@@ -53,7 +55,7 @@ abstract class MeetingDatabase : RoomDatabase() {
                     MeetingDatabase::class.java,
                     "meeting_database"
                 )
-                .fallbackToDestructiveMigration() // This will clear old data if schema mismatches
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
